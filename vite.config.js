@@ -6,7 +6,7 @@ export default {
     open: true,
   },
   build: {
-    target: "esnext",
+    target: "baseline-widely-available",
     outDir: "dist",
     sourcemap: true,
   },
