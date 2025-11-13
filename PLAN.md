@@ -28,8 +28,8 @@ Key gameplay challenge: Let players collect and craft nearby tokens into a suffi
 
 #### Cleaning and starting fresh
 
-- [ ] Clear out `src/main.ts` so it only contains a minimal TypeScript entry point
-- [ ] Commit a cleanup-focused change that removes unused starter logic
+- [✅] Clear out `src/main.ts` so it only contains a minimal TypeScript entry point
+- [✅] Commit a cleanup-focused change that removes unused starter logic
 
 #### Basic Leaflet map and player location
 
