@@ -33,9 +33,9 @@ Key gameplay challenge: Let players collect and craft nearby tokens into a suffi
 
 #### Basic Leaflet map and player location
 
-- [ ] Initialize a basic Leaflet map in `main.ts`
-- [ ] Center the map on the fixed classroom coordinates with a reasonable zoom level
-- [ ] Render a simple marker or circle that represents the player’s fixed location
+- [✅] Initialize a basic Leaflet map in `main.ts`
+- [✅] Center the map on the fixed classroom coordinates with a reasonable zoom level
+- [✅] Render a simple marker or circle that represents the player’s fixed location
 
 #### First grid sketch
 
