@@ -115,3 +115,29 @@ Key gameplay challenge: Let players collect, place, and craft nearby tokens into
 - [✅] Deploy to GitHub Pages and verify the game loads
 - [✅] Commit with no new features (refactor-only)
 - [✅] Make the final commit: `D3.a complete`
+
+## D3.b: Globe-spanning gameplay
+
+Key technical challenge: Support gameplay anywhere on Earth using a grid anchored at Null Island, with dynamic spawning/despawning of cells as the player moves.\
+Key gameplay challenge: Let players move their character around the world, farm tokens from memoryless cells, and craft a higher-value token than in D3.a.
+
+### Initial prep
+
+- [✅] Copy the final D3.a code into a `D3b` starting commit (baseline)
+- [✅] Add a new `D3.b` section to this PLAN (this file) and commit it
+- [✅] Raise the win threshold so D3.b requires a higher value token (e.g. 32 instead of 16)
+
+#### Grid + coordinate system changes
+
+- [ ] Introduce a `GridCell` type (e.g. `{ i: number; j: number }`) decoupled from Leaflet rectangles
+- [ ] Add a `NULL_ISLAND_LATLNG` constant at (0, 0)
+- [ ] Add functions to convert between:
+  - [ ] `lat/lng -> GridCell` indices
+  - [ ] `GridCell -> Leaflet LatLngBounds` (top-left + bottom-right)
+- [ ] Update grid-drawing code to use the Null Island–anchored grid instead of classroom-anchored math
+
+#### Player movement UI (to do after grid switch)
+
+- [ ] Add simple UI buttons (N / S / E / W) for moving the player by one grid step
+- [ ] Track player position as a `GridCell` plus a derived `LatLng`
+- [ ] As the player moves, keep cells visible to the edge of the map and restrict interaction to nearby cells

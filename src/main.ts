@@ -41,7 +41,7 @@ const TILE_DEGREES = 1e-4;
 const INTERACTION_RADIUS_CELLS = 3;
 
 // Win condition: held token must reach at least this value
-const TARGET_TOKEN_VALUE = 16;
+const TARGET_TOKEN_VALUE = 32;
 
 // --- Game state ---
 
