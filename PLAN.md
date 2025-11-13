@@ -2,7 +2,7 @@
 
 ## Game Design Vision
 
-World of Bits is a location-based crafting game played on a grid laid over the real world. The player interacts with nearby cells on a Leaflet map to collect and combine matching tokens into higher-value ones, aiming to eventually craft a very high-value token.
+World of Bits is a location-based crafting game played on a grid laid over the real world. The player interacts with nearby cells on a Leaflet map to collect, place, and combine matching tokens into higher-value ones. The goal is to eventually craft a single high-value token by moving intelligently around the map and managing space within the grid.
 
 ## Technologies
 
@@ -16,75 +16,102 @@ World of Bits is a location-based crafting game played on a grid laid over the r
 ## D3.a: Core mechanics (token collection and crafting)
 
 Key technical challenge: Assemble a map-based user interface using Leaflet.\
-Key gameplay challenge: Let players collect and craft nearby tokens into a sufficiently high-value token.
+Key gameplay challenge: Let players collect, place, and craft nearby tokens into a sufficiently high-value token.
 
-### Steps
+---
 
-#### Initial setup and understanding
+## Steps
+
+### Initial setup and understanding
 
 - [✅] Create this `PLAN.md` file and commit it
 - [✅] Skim the starter code to understand how Leaflet and the luck helper are used
 - [✅] Run the dev server and confirm the starter project builds and runs
 
-#### Cleaning and starting fresh
+### Cleaning and starting fresh
 
 - [✅] Clear out `src/main.ts` so it only contains a minimal TypeScript entry point
 - [✅] Commit a cleanup-focused change that removes unused starter logic
 
-#### Basic Leaflet map and player location
+### Basic Leaflet map and player location
 
 - [✅] Initialize a basic Leaflet map in `main.ts`
-- [✅] Center the map on the fixed classroom coordinates with a reasonable zoom level
-- [✅] Render a simple marker or circle that represents the player’s fixed location
+- [✅] Center the map on the fixed classroom coordinates
+- [✅] Render a simple marker that represents the player’s location
 
-#### First grid sketch
+### First grid sketch
 
-- [✅] Define a grid cell size in degrees (for example 0.0001 degrees per side)
-- [✅] Draw at least a single test cell rectangle near the player’s location on the map
+- [✅] Define a grid cell size in degrees (e.g. 0.0001)
+- [✅] Draw at least one test rectangle on the map
+- [✅] Use loops to generate a full grid around the player
+- [✅] Ensure the grid extends to the edges of the viewport
+
+---
 
 ## Next 3 commits for finishing D3.a
 
-### Next commit: grid of cells + deterministic token spawning (visual only)
+### ✔ Commit 1 Complete: Grid of cells + deterministic token spawning (visual only)
 
-- [✅] Decide on a small neighborhood size around the player (e.g. rows/cols from -8 to 8)
-- [✅] Add a helper to compute a cell’s center `LatLng` from its `(row, col)` indices
-- [✅] Use nested loops over `(row, col)` to draw a full grid of rectangles around the player
-- [✅] Ensure the grid extends to at least the edges of the initial map viewport
-- [✅] Import the `luck` function into `main.ts`
-- [✅] Implement a deterministic `getBaseTokenValue(row, col): number | null` that:
-- [✅] Uses `luck` to decide if a cell has a token
-- [✅] Returns a simple starting value (e.g. `1`) when a token exists
-- [✅] For each cell, display its token (if any) directly on the map (e.g. a small text label or icon at the cell center)
-- [✅] Reload the page to confirm that token presence and values are consistent across page loads
+- [✅] Compute grid bounds based on map viewport
+- [✅] Add helpers to compute cell bounds and centers
+- [✅] Draw grid rectangles covering the visible map
+- [✅] Import and use `luck` for deterministic token spawning
+- [✅] Implement `getBaseTokenValue()` that:
+  - [✅] Uses `luck` to decide token presence
+  - [✅] Spawns **only value-1 tokens**
+- [✅] Display token values directly at each cell center
+- [✅] Confirm that token layout is consistent across reloads
 
-### Second commit: interaction radius, inventory, and crafting logic
+---
 
-- [ ] Define an interaction radius so only cells within a few cell-widths of the player are interactable
-- [ ] Add a simple `GameState` structure in `main.ts` to track:
-  - [ ] `heldTokenValue: number | null`
-  - [ ] Cell overrides (changes to token values after pickup/crafting)
-- [ ] Add click handlers to grid cells that:
-  - [ ] Ignore clicks on cells outside the interaction radius
-  - [ ] If `heldTokenValue === null` and the cell has a token, pick it up:
-    - [ ] Remove the token from that cell (record in overrides)
-    - [ ] Set `heldTokenValue` to the cell’s token value
-- [ ] Display the current held token clearly in the UI (status panel or separate HUD)
-- [ ] If `heldTokenValue !== null` and the clicked cell has a token of the same value:
-  - [ ] Remove the cell’s token
-  - [ ] Create a new token in that cell with double the value
-  - [ ] Update `heldTokenValue` to the new doubled value (or decide if it stays in the cell instead)
-- [ ] Detect when `heldTokenValue` reaches at least the target value (e.g. 8 or 16) and show a clear win message on screen
+## **Commit 2: Interaction radius, inventory, crafting, and placement** (WORKING ON NOW)
 
-### Third commit: polish, cleanup-only refactor, and D3.a completion
+### Interaction rules + state
 
-- [ ] Double-check that:
-  - [ ] The player can only hold at most one token at a time
-  - [ ] The player can only interact with cells “nearby”
-  - [ ] The initial token layout is consistent across reloads (thanks to `luck`)
-- [ ] Do a cleanup-only pass:
-  - [ ] Remove leftover debugging `console.log`s and unused variables
-  - [ ] Extract any tiny helper functions needed for clarity
-- [ ] Update any labels or UI text so the game feels coherent for playtesting
-- [ ] Deploy the current build to GitHub Pages and verify the game is playable in the browser
-- [ ] Make at least one commit with only refactors / small style changes (no new gameplay features)
-- [ ] Make a final commit for this milestone with a message like: `D3.a complete`
+- [✅] Implement interaction radius so only nearby cells are usable
+- [✅] Add a `GameState` structure that tracks:
+  - [✅] `heldTokenValue: number | null`
+  - [✅] Per-cell overrides for token changes
+- [✅] Visual UI to show held token in a status panel
+
+### Click handling
+
+- [✅] If **hand is empty** and **cell has a token** → Pick it up
+  - [✅] Remove token from that cell
+  - [✅] Record removal in overrides
+  - [✅] Set `heldTokenValue`
+
+- [✅] If **hand is not empty** and **cell is empty** → Place token
+  - [✅] Move `heldTokenValue` into that cell
+  - [✅] Clear the hand
+  - [✅] Update labels
+
+- [✅] If **hand is not empty** and **cell has SAME value** → Craft
+  - [✅] Remove the cell’s token
+  - [✅] Combine: new value = held * 2
+  - [✅] New value stays **in hand**
+  - [✅] Cell becomes empty
+  - [✅] Update label
+
+### Win condition
+
+- [✅] Detect when held token reaches target value (e.g. 16)
+- [✅] Display a clear “You win!” message
+
+---
+
+## ✔ Commit 3: Final polish + cleanup + D3.a completion
+
+(Will do after Commit 2)
+
+- [ ] Verify gameplay rules:
+  - [ ] Only one token can be held at a time
+  - [ ] Only nearby cells are interactable
+  - [ ] Initial token layout is deterministic
+- [ ] Perform a cleanup-only refactor:
+  - [ ] Remove leftover `console.log` calls
+  - [ ] Ensure helper functions are clean and readable
+- [ ] Update any UI wording (status text, win message)
+- [ ] Deploy to GitHub Pages and verify the game loads
+- [ ] Commit with no new features (refactor-only)
+- [ ] Make the final commit: `D3.a complete`
