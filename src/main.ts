@@ -23,14 +23,15 @@ const statusPanel = document.createElement("div");
 statusPanel.id = "statusPanel";
 document.body.append(statusPanel);
 
-// --- Fixed classroom coordinates (player position) ---
+// --- Gameplay constants ---
 
+// Fixed classroom coordinates (player position)
 const CLASSROOM_LATLNG = leaflet.latLng(
   36.997936938057016,
   -122.05703507501151,
 );
 
-// Initial zoom level for gameplay
+// Map zoom level used for gameplay
 const GAMEPLAY_ZOOM_LEVEL = 19;
 
 // Grid cell size in degrees
@@ -66,13 +67,14 @@ function cellKey(row: number, col: number): string {
 }
 
 function getCellBounds(row: number, col: number): leaflet.LatLngBounds {
-  const origin = CLASSROOM_LATLNG;
-
   return leaflet.latLngBounds([
-    [origin.lat + row * TILE_DEGREES, origin.lng + col * TILE_DEGREES],
     [
-      origin.lat + (row + 1) * TILE_DEGREES,
-      origin.lng + (col + 1) * TILE_DEGREES,
+      CLASSROOM_LATLNG.lat + row * TILE_DEGREES,
+      CLASSROOM_LATLNG.lng + col * TILE_DEGREES,
+    ],
+    [
+      CLASSROOM_LATLNG.lat + (row + 1) * TILE_DEGREES,
+      CLASSROOM_LATLNG.lng + (col + 1) * TILE_DEGREES,
     ],
   ]);
 }
@@ -83,7 +85,7 @@ function getBaseTokenValue(row: number, col: number): number | null {
   const seed = `${row},${col},token`;
   const roll = luck(seed);
 
-  // e.g. 30% chance of a 1, otherwise empty
+  // 30% chance of a 1, otherwise empty
   if (roll < 0.3) {
     return 1;
   }
@@ -235,7 +237,6 @@ playerMarker.addTo(map);
 // --- Draw grid that covers the initial viewport and wire up clicks ---
 
 map.whenReady(() => {
-  const origin = CLASSROOM_LATLNG;
   const bounds = map.getBounds();
 
   const south = bounds.getSouth();
@@ -243,10 +244,10 @@ map.whenReady(() => {
   const west = bounds.getWest();
   const east = bounds.getEast();
 
-  const minRow = Math.floor((south - origin.lat) / TILE_DEGREES);
-  const maxRow = Math.ceil((north - origin.lat) / TILE_DEGREES);
-  const minCol = Math.floor((west - origin.lng) / TILE_DEGREES);
-  const maxCol = Math.ceil((east - origin.lng) / TILE_DEGREES);
+  const minRow = Math.floor((south - CLASSROOM_LATLNG.lat) / TILE_DEGREES);
+  const maxRow = Math.ceil((north - CLASSROOM_LATLNG.lat) / TILE_DEGREES);
+  const minCol = Math.floor((west - CLASSROOM_LATLNG.lng) / TILE_DEGREES);
+  const maxCol = Math.ceil((east - CLASSROOM_LATLNG.lng) / TILE_DEGREES);
 
   for (let row = minRow; row <= maxRow; row++) {
     for (let col = minCol; col <= maxCol; col++) {
@@ -271,6 +272,6 @@ map.whenReady(() => {
     }
   }
 
-  // Initialize UI
+  // Initialize UI text after map and grid are ready
   updateStatusPanel();
 });

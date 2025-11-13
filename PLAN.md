@@ -104,14 +104,14 @@ Key gameplay challenge: Let players collect, place, and craft nearby tokens into
 
 (Will do after Commit 2)
 
-- [ ] Verify gameplay rules:
-  - [ ] Only one token can be held at a time
-  - [ ] Only nearby cells are interactable
-  - [ ] Initial token layout is deterministic
-- [ ] Perform a cleanup-only refactor:
-  - [ ] Remove leftover `console.log` calls
-  - [ ] Ensure helper functions are clean and readable
-- [ ] Update any UI wording (status text, win message)
-- [ ] Deploy to GitHub Pages and verify the game loads
-- [ ] Commit with no new features (refactor-only)
-- [ ] Make the final commit: `D3.a complete`
+- [✅] Verify gameplay rules:
+  - [✅] Only one token can be held at a time
+  - [✅] Only nearby cells are interactable
+  - [✅] Initial token layout is deterministic
+- [✅] Perform a cleanup-only refactor:
+  - [✅] Remove leftover `console.log` calls
+  - [✅] Ensure helper functions are clean and readable
+- [✅] Update any UI wording (status text, win message)
+- [✅] Deploy to GitHub Pages and verify the game loads
+- [✅] Commit with no new features (refactor-only)
+- [✅] Make the final commit: `D3.a complete`
