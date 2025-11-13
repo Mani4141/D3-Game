@@ -138,6 +138,6 @@ Key gameplay challenge: Let players move their character around the world, farm 
 
 #### Player movement UI (to do after grid switch)
 
-- [ ] Add simple UI buttons (N / S / E / W) for moving the player by one grid step
-- [ ] Track player position as a `GridCell` plus a derived `LatLng`
-- [ ] As the player moves, keep cells visible to the edge of the map and restrict interaction to nearby cells
+- [✅] Add simple UI buttons (N / S / E / W) for moving the player by one grid step
+- [✅] Track player position as a `GridCell` plus a derived `LatLng`
+- [✅] As the player moves, keep cells visible to the edge of the map and restrict interaction to nearby cells

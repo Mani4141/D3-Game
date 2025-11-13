@@ -18,6 +18,11 @@ const mapDiv = document.createElement("div");
 mapDiv.id = "map";
 document.body.append(mapDiv);
 
+// Control panel for movement buttons
+const controlPanel = document.createElement("div");
+controlPanel.id = "controlPanel";
+document.body.append(controlPanel);
+
 // Status panel (for held token + messages)
 const statusPanel = document.createElement("div");
 statusPanel.id = "statusPanel";
@@ -25,13 +30,13 @@ document.body.append(statusPanel);
 
 // --- Gameplay constants ---
 
-// Fixed classroom coordinates (starting player position on the globe)
+// Fixed classroom coordinates (starting physical location)
 const CLASSROOM_LATLNG = leaflet.latLng(
   36.997936938057016,
   -122.05703507501151,
 );
 
-// Global grid anchor at Null Island (0,0)
+// Global grid anchor at Null Island (0, 0)
 const NULL_ISLAND_LATLNG = leaflet.latLng(0, 0);
 
 // Map zoom level used for gameplay
@@ -88,6 +93,10 @@ function cellToBounds(cell: GridCell): leaflet.LatLngBounds {
   );
 }
 
+function cellToCenter(cell: GridCell): leaflet.LatLng {
+  return cellToBounds(cell).getCenter();
+}
+
 // --- Game state ---
 
 const initialPlayerCell = latLngToCell(CLASSROOM_LATLNG);
@@ -103,7 +112,7 @@ const gameState: GameState = {
 const cellRectangles = new Map<string, leaflet.Rectangle>();
 
 // Deterministic base token spawning: same row/col -> same result every time
-// For D3.a and D3.b base: world initially only has value-1 tokens (or empty)
+// For D3: world initially only has value-1 tokens (or empty)
 function getBaseTokenValue(row: number, col: number): number | null {
   const seed = `${row},${col},token`;
   const roll = luck(seed);
@@ -235,10 +244,13 @@ function handleCellClick(row: number, col: number) {
   checkWinCondition();
 }
 
-// --- Initialize map ---
+// --- Map setup ---
+
+// Start the player marker at the center of their starting grid cell
+const startingPlayerLatLng = cellToCenter(initialPlayerCell);
 
 const map = leaflet.map(mapDiv, {
-  center: CLASSROOM_LATLNG, // player starts near the classroom, but grid is global
+  center: startingPlayerLatLng,
   zoom: GAMEPLAY_ZOOM_LEVEL,
   minZoom: GAMEPLAY_ZOOM_LEVEL,
   maxZoom: GAMEPLAY_ZOOM_LEVEL,
@@ -255,13 +267,13 @@ leaflet
   .addTo(map);
 
 // Player marker
-const playerMarker = leaflet.marker(CLASSROOM_LATLNG);
+const playerMarker = leaflet.marker(startingPlayerLatLng);
 playerMarker.bindTooltip("You are here");
 playerMarker.addTo(map);
 
-// --- Draw grid that covers the initial viewport and wire up clicks ---
+// --- Dynamic grid management (spawn/despawn + memoryless cells) ---
 
-map.whenReady(() => {
+function updateVisibleCells() {
   const bounds = map.getBounds();
 
   const south = bounds.getSouth();
@@ -269,7 +281,7 @@ map.whenReady(() => {
   const west = bounds.getWest();
   const east = bounds.getEast();
 
-  // Now compute rows/cols relative to Null Island (global grid)
+  // Compute rows/cols relative to Null Island (global grid)
   const minRow = Math.floor(
     (south - NULL_ISLAND_LATLNG.lat) / TILE_DEGREES,
   );
@@ -283,29 +295,95 @@ map.whenReady(() => {
     (east - NULL_ISLAND_LATLNG.lng) / TILE_DEGREES,
   );
 
+  const neededKeys = new Set<string>();
+
+  // Create or keep cells that should be visible
   for (let row = minRow; row <= maxRow; row++) {
     for (let col = minCol; col <= maxCol; col++) {
-      const cellBounds = cellToBounds({ i: row, j: col });
-      const rect = leaflet.rectangle(cellBounds, {
-        color: "#3388ff",
-        weight: 1,
-      });
-
       const key = cellKey(row, col);
-      cellRectangles.set(key, rect);
+      neededKeys.add(key);
 
-      rect.addTo(map);
+      if (!cellRectangles.has(key)) {
+        const bounds = cellToBounds({ i: row, j: col });
+        const rect = leaflet.rectangle(bounds, {
+          color: "#3388ff",
+          weight: 1,
+        });
 
-      // Initial label based on base or overridden token
-      updateCellDisplay(row, col);
+        cellRectangles.set(key, rect);
+        rect.addTo(map);
 
-      // Click handler for pickup / placement / crafting
-      rect.on("click", () => {
-        handleCellClick(row, col);
-      });
+        // Initial label based on base or overridden token
+        updateCellDisplay(row, col);
+
+        // Click handler for pickup / placement / crafting
+        rect.on("click", () => {
+          handleCellClick(row, col);
+        });
+      }
     }
   }
 
-  // Initialize UI text after map and grid are ready
+  // Remove cells that are no longer needed (memoryless behavior)
+  for (const [key, rect] of cellRectangles.entries()) {
+    if (!neededKeys.has(key)) {
+      map.removeLayer(rect);
+      cellRectangles.delete(key);
+
+      // Forget any overrides for this cell so it "resets" next time it appears
+      gameState.cellOverrides.delete(key);
+    }
+  }
+}
+
+// --- Player movement controls ---
+
+function updatePlayerMarkerAndView() {
+  const newLatLng = cellToCenter(gameState.playerCell);
+  playerMarker.setLatLng(newLatLng);
+  map.panTo(newLatLng);
+}
+
+function movePlayerBy(di: number, dj: number) {
+  if (gameState.hasWon) return;
+
+  gameState.playerCell = {
+    i: gameState.playerCell.i + di,
+    j: gameState.playerCell.j + dj,
+  };
+
+  updatePlayerMarkerAndView();
+  updateStatusPanel("Moved.");
+}
+
+// Create movement buttons
+function setupMovementButtons() {
+  const directions: { label: string; di: number; dj: number }[] = [
+    { label: "North", di: 1, dj: 0 },
+    { label: "South", di: -1, dj: 0 },
+    { label: "West", di: 0, dj: -1 },
+    { label: "East", di: 0, dj: 1 },
+  ];
+
+  directions.forEach((dir) => {
+    const button = document.createElement("button");
+    button.textContent = dir.label;
+    button.addEventListener("click", () => {
+      movePlayerBy(dir.di, dir.dj);
+    });
+    controlPanel.append(button);
+  });
+}
+
+// --- Initialization ---
+
+map.whenReady(() => {
+  setupMovementButtons();
+  updateVisibleCells();
   updateStatusPanel();
+});
+
+// When the player pans/zooms the map, update visible cells
+map.on("moveend", () => {
+  updateVisibleCells();
 });

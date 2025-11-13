@@ -7,14 +7,37 @@ body {
 /* Main map area */
 #map {
   width: 100%;
-  height: 80vh;
+  height: 75vh;
+}
+
+/* Movement controls */
+#controlPanel {
+  padding: 0.5rem 1rem;
+  background: #ffffff;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+#controlPanel button {
+  padding: 0.35rem 0.75rem;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  background: #f0f0f0;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+#controlPanel button:hover {
+  background: #e0e0e0;
 }
 
 /* Status panel for held token + messages */
 #statusPanel {
   padding: 0.75rem 1rem;
   background: #ffffff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.1);
   font-size: 0.9rem;
 }
 
