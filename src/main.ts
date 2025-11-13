@@ -25,11 +25,14 @@ document.body.append(statusPanel);
 
 // --- Gameplay constants ---
 
-// Fixed classroom coordinates (player position)
+// Fixed classroom coordinates (starting player position on the globe)
 const CLASSROOM_LATLNG = leaflet.latLng(
   36.997936938057016,
   -122.05703507501151,
 );
+
+// Global grid anchor at Null Island (0,0)
+const NULL_ISLAND_LATLNG = leaflet.latLng(0, 0);
 
 // Map zoom level used for gameplay
 const GAMEPLAY_ZOOM_LEVEL = 19;
@@ -40,47 +43,67 @@ const TILE_DEGREES = 1e-4;
 // How far from the player (in cell steps) the player can interact
 const INTERACTION_RADIUS_CELLS = 3;
 
-// Win condition: held token must reach at least this value
+// Win condition: held token must reach at least this value (higher than D3.a)
 const TARGET_TOKEN_VALUE = 32;
 
-// --- Game state ---
+// --- Types ---
+
+type GridCell = {
+  i: number; // row index
+  j: number; // column index
+};
 
 type GameState = {
   heldTokenValue: number | null;
   cellOverrides: Map<string, number | null>; // key -> overridden token value (null = empty)
   hasWon: boolean;
+  playerCell: GridCell;
 };
 
-const gameState: GameState = {
-  heldTokenValue: null,
-  cellOverrides: new Map(),
-  hasWon: false,
-};
-
-// Keep references to rectangles so we can update them later
-const cellRectangles = new Map<string, leaflet.Rectangle>();
-
-// --- Helpers for grid geometry and keys ---
+// --- Grid helpers for coordinates ---
 
 function cellKey(row: number, col: number): string {
   return `${row},${col}`;
 }
 
-function getCellBounds(row: number, col: number): leaflet.LatLngBounds {
-  return leaflet.latLngBounds([
-    [
-      CLASSROOM_LATLNG.lat + row * TILE_DEGREES,
-      CLASSROOM_LATLNG.lng + col * TILE_DEGREES,
-    ],
-    [
-      CLASSROOM_LATLNG.lat + (row + 1) * TILE_DEGREES,
-      CLASSROOM_LATLNG.lng + (col + 1) * TILE_DEGREES,
-    ],
-  ]);
+// Convert a LatLng to a global GridCell anchored at Null Island
+function latLngToCell(position: leaflet.LatLng): GridCell {
+  const i = Math.floor(
+    (position.lat - NULL_ISLAND_LATLNG.lat) / TILE_DEGREES,
+  );
+  const j = Math.floor(
+    (position.lng - NULL_ISLAND_LATLNG.lng) / TILE_DEGREES,
+  );
+  return { i, j };
 }
 
+// Convert a GridCell to Leaflet bounds, anchored at Null Island
+function cellToBounds(cell: GridCell): leaflet.LatLngBounds {
+  const lat0 = NULL_ISLAND_LATLNG.lat + cell.i * TILE_DEGREES;
+  const lng0 = NULL_ISLAND_LATLNG.lng + cell.j * TILE_DEGREES;
+
+  return leaflet.latLngBounds(
+    [lat0, lng0],
+    [lat0 + TILE_DEGREES, lng0 + TILE_DEGREES],
+  );
+}
+
+// --- Game state ---
+
+const initialPlayerCell = latLngToCell(CLASSROOM_LATLNG);
+
+const gameState: GameState = {
+  heldTokenValue: null,
+  cellOverrides: new Map(),
+  hasWon: false,
+  playerCell: initialPlayerCell,
+};
+
+// Keep references to rectangles so we can update them later
+const cellRectangles = new Map<string, leaflet.Rectangle>();
+
 // Deterministic base token spawning: same row/col -> same result every time
-// For D3.a: world initially only has value-1 tokens (or empty)
+// For D3.a and D3.b base: world initially only has value-1 tokens (or empty)
 function getBaseTokenValue(row: number, col: number): number | null {
   const seed = `${row},${col},token`;
   const roll = luck(seed);
@@ -102,9 +125,11 @@ function getEffectiveTokenValue(row: number, col: number): number | null {
   return getBaseTokenValue(row, col);
 }
 
-// Chebyshev distance in cell space: max(|row|, |col|)
+// Chebyshev distance in cell space from the PLAYER'S cell
 function canInteractWithCell(row: number, col: number): boolean {
-  const distance = Math.max(Math.abs(row), Math.abs(col));
+  const pi = gameState.playerCell.i;
+  const pj = gameState.playerCell.j;
+  const distance = Math.max(Math.abs(row - pi), Math.abs(col - pj));
   return distance <= INTERACTION_RADIUS_CELLS;
 }
 
@@ -213,7 +238,7 @@ function handleCellClick(row: number, col: number) {
 // --- Initialize map ---
 
 const map = leaflet.map(mapDiv, {
-  center: CLASSROOM_LATLNG,
+  center: CLASSROOM_LATLNG, // player starts near the classroom, but grid is global
   zoom: GAMEPLAY_ZOOM_LEVEL,
   minZoom: GAMEPLAY_ZOOM_LEVEL,
   maxZoom: GAMEPLAY_ZOOM_LEVEL,
@@ -244,14 +269,23 @@ map.whenReady(() => {
   const west = bounds.getWest();
   const east = bounds.getEast();
 
-  const minRow = Math.floor((south - CLASSROOM_LATLNG.lat) / TILE_DEGREES);
-  const maxRow = Math.ceil((north - CLASSROOM_LATLNG.lat) / TILE_DEGREES);
-  const minCol = Math.floor((west - CLASSROOM_LATLNG.lng) / TILE_DEGREES);
-  const maxCol = Math.ceil((east - CLASSROOM_LATLNG.lng) / TILE_DEGREES);
+  // Now compute rows/cols relative to Null Island (global grid)
+  const minRow = Math.floor(
+    (south - NULL_ISLAND_LATLNG.lat) / TILE_DEGREES,
+  );
+  const maxRow = Math.ceil(
+    (north - NULL_ISLAND_LATLNG.lat) / TILE_DEGREES,
+  );
+  const minCol = Math.floor(
+    (west - NULL_ISLAND_LATLNG.lng) / TILE_DEGREES,
+  );
+  const maxCol = Math.ceil(
+    (east - NULL_ISLAND_LATLNG.lng) / TILE_DEGREES,
+  );
 
   for (let row = minRow; row <= maxRow; row++) {
     for (let col = minCol; col <= maxCol; col++) {
-      const cellBounds = getCellBounds(row, col);
+      const cellBounds = cellToBounds({ i: row, j: col });
       const rect = leaflet.rectangle(cellBounds, {
         color: "#3388ff",
         weight: 1,

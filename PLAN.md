@@ -129,12 +129,12 @@ Key gameplay challenge: Let players move their character around the world, farm 
 
 #### Grid + coordinate system changes
 
-- [ ] Introduce a `GridCell` type (e.g. `{ i: number; j: number }`) decoupled from Leaflet rectangles
-- [ ] Add a `NULL_ISLAND_LATLNG` constant at (0, 0)
-- [ ] Add functions to convert between:
-  - [ ] `lat/lng -> GridCell` indices
-  - [ ] `GridCell -> Leaflet LatLngBounds` (top-left + bottom-right)
-- [ ] Update grid-drawing code to use the Null Island–anchored grid instead of classroom-anchored math
+- [✅] Introduce a `GridCell` type (e.g. `{ i: number; j: number }`) decoupled from Leaflet rectangles
+- [✅] Add a `NULL_ISLAND_LATLNG` constant at (0, 0)
+- [✅] Add functions to convert between:
+  - [✅] `lat/lng -> GridCell` indices
+  - [✅] `GridCell -> Leaflet LatLngBounds` (top-left + bottom-right)
+- [✅] Update grid-drawing code to use the Null Island–anchored grid instead of classroom-anchored math
 
 #### Player movement UI (to do after grid switch)
 
