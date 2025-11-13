@@ -8,6 +8,9 @@ import "./style.css";
 // Fix missing Leaflet marker icons
 import "./_leafletWorkaround.ts";
 
+// Luck helper for deterministic randomness
+import luck from "./_luck.ts";
+
 // --- Basic UI elements ---
 
 // Map container
@@ -18,7 +21,7 @@ document.body.append(mapDiv);
 // Status panel (simple placeholder for now)
 const statusPanel = document.createElement("div");
 statusPanel.id = "statusPanel";
-statusPanel.textContent = "World of Bits – Core map prototype";
+statusPanel.textContent = "World of Bits – Grid and tokens prototype";
 document.body.append(statusPanel);
 
 // --- Fixed classroom coordinates (player position) ---
@@ -31,17 +34,38 @@ const CLASSROOM_LATLNG = leaflet.latLng(
 // Initial zoom level for gameplay
 const GAMEPLAY_ZOOM_LEVEL = 19;
 
-// Grid cell size in degrees (about house-sized)
+// Grid cell size in degrees
 const TILE_DEGREES = 1e-4;
 
-// Helper to convert grid indices (i, j) to cell bounds
-function getCellBounds(i: number, j: number): leaflet.LatLngBounds {
+// --- Helpers for grid geometry ---
+
+function getCellBounds(row: number, col: number): leaflet.LatLngBounds {
   const origin = CLASSROOM_LATLNG;
 
   return leaflet.latLngBounds([
-    [origin.lat + i * TILE_DEGREES, origin.lng + j * TILE_DEGREES],
-    [origin.lat + (i + 1) * TILE_DEGREES, origin.lng + (j + 1) * TILE_DEGREES],
+    [origin.lat + row * TILE_DEGREES, origin.lng + col * TILE_DEGREES],
+    [
+      origin.lat + (row + 1) * TILE_DEGREES,
+      origin.lng + (col + 1) * TILE_DEGREES,
+    ],
   ]);
+}
+
+function getCellCenter(row: number, col: number): leaflet.LatLng {
+  return getCellBounds(row, col).getCenter();
+}
+
+// Deterministic token spawning: same row/col -> same result every time
+function getBaseTokenValue(row: number, col: number): number | null {
+  const seed = `${row},${col},token`;
+  const roll = luck(seed);
+
+  // 30% chance of a token with value 1
+  if (roll < 0.3) {
+    return 1;
+  }
+
+  return null;
 }
 
 // --- Initialize the Leaflet map centered on classroom ---
@@ -69,15 +93,49 @@ const playerMarker = leaflet.marker(CLASSROOM_LATLNG);
 playerMarker.bindTooltip("You are here");
 playerMarker.addTo(map);
 
-// --- First test grid cell near the player ---
+// --- Draw a grid that covers the entire initial viewport ---
 
-// For now, treat classroom as the origin corner of cell (0, 0)
-const testCellBounds = getCellBounds(0, 0);
+map.whenReady(() => {
+  const origin = CLASSROOM_LATLNG;
+  const bounds = map.getBounds();
 
-const testCellRectangle = leaflet.rectangle(testCellBounds, {
-  color: "#3388ff",
-  weight: 1,
+  const south = bounds.getSouth();
+  const north = bounds.getNorth();
+  const west = bounds.getWest();
+  const east = bounds.getEast();
+
+  // Convert lat/lng bounds to row/col ranges relative to the origin
+  const minRow = Math.floor((south - origin.lat) / TILE_DEGREES);
+  const maxRow = Math.ceil((north - origin.lat) / TILE_DEGREES);
+  const minCol = Math.floor((west - origin.lng) / TILE_DEGREES);
+  const maxCol = Math.ceil((east - origin.lng) / TILE_DEGREES);
+
+  for (let row = minRow; row <= maxRow; row++) {
+    for (let col = minCol; col <= maxCol; col++) {
+      const cellBounds = getCellBounds(row, col);
+
+      const rect = leaflet.rectangle(cellBounds, {
+        color: "#3388ff",
+        weight: 1,
+      });
+
+      rect.addTo(map);
+
+      const tokenValue = getBaseTokenValue(row, col);
+
+      // If this cell has a token, show its value without clicking
+      if (tokenValue !== null) {
+        const center = getCellCenter(row, col);
+        leaflet
+          .tooltip({
+            permanent: true,
+            direction: "center",
+            className: "token-label",
+          })
+          .setLatLng(center)
+          .setContent(`${tokenValue}`)
+          .addTo(map);
+      }
+    }
+  }
 });
-
-testCellRectangle.addTo(map);
-testCellRectangle.bindTooltip("Test cell (0, 0)");

@@ -46,16 +46,16 @@ Key gameplay challenge: Let players collect and craft nearby tokens into a suffi
 
 ### Next commit: grid of cells + deterministic token spawning (visual only)
 
-- [ ] Decide on a small neighborhood size around the player (e.g. rows/cols from -8 to 8)
-- [ ] Add a helper to compute a cell’s center `LatLng` from its `(row, col)` indices
-- [ ] Use nested loops over `(row, col)` to draw a full grid of rectangles around the player
-- [ ] Ensure the grid extends to at least the edges of the initial map viewport
-- [ ] Import the `luck` function into `main.ts`
-- [ ] Implement a deterministic `getBaseTokenValue(row, col): number | null` that:
-  - [ ] Uses `luck` to decide if a cell has a token
-  - [ ] Returns a simple starting value (e.g. `1`) when a token exists
-- [ ] For each cell, display its token (if any) directly on the map (e.g. a small text label or icon at the cell center)
-- [ ] Reload the page to confirm that token presence and values are consistent across page loads
+- [✅] Decide on a small neighborhood size around the player (e.g. rows/cols from -8 to 8)
+- [✅] Add a helper to compute a cell’s center `LatLng` from its `(row, col)` indices
+- [✅] Use nested loops over `(row, col)` to draw a full grid of rectangles around the player
+- [✅] Ensure the grid extends to at least the edges of the initial map viewport
+- [✅] Import the `luck` function into `main.ts`
+- [✅] Implement a deterministic `getBaseTokenValue(row, col): number | null` that:
+- [✅] Uses `luck` to decide if a cell has a token
+- [✅] Returns a simple starting value (e.g. `1`) when a token exists
+- [✅] For each cell, display its token (if any) directly on the map (e.g. a small text label or icon at the cell center)
+- [✅] Reload the page to confirm that token presence and values are consistent across page loads
 
 ### Second commit: interaction radius, inventory, and crafting logic
 
