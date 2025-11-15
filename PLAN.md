@@ -157,5 +157,5 @@ Key technical challenge: Use a lightweight global grid plus a persistent store f
 - [✅] Manually test:
   - [✅] Modify a cell, scroll it fully off-screen, then scroll back
   - [✅] Confirm the modified state is restored, not reset
-- [] Do a cleanup-only commit for D3.c code changes
-- [] Make a commit marking “D3.c complete”
+- [✅] Do a cleanup-only commit for D3.c code changes
+- [✅] Make a commit marking “D3.c complete”

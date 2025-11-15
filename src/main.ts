@@ -5,7 +5,7 @@ import leaflet from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./style.css";
 
-// Fix missing Leaflet marker icons
+// Fix missing Leaflet icons
 import "./_leafletWorkaround.ts";
 
 // Deterministic random source
@@ -22,7 +22,7 @@ const mapDiv = document.createElement("div");
 mapDiv.id = "map";
 document.body.append(mapDiv);
 
-// Movement button panel
+// Movement buttons
 const controlPanel = document.createElement("div");
 controlPanel.id = "controlPanel";
 document.body.append(controlPanel);
@@ -38,30 +38,28 @@ document.body.append(statusPanel);
 // ────────────────────────────────────────────────────────────────────────────────
 //
 
-// Starting physical position (near UCSC classroom)
+// Starting position (near UCSC)
 const CLASSROOM_LATLNG = leaflet.latLng(
   36.997936938057016,
   -122.05703507501151,
 );
 
-// Global grid anchor (Null Island)
+// Global grid anchor
 const NULL_ISLAND_LATLNG = leaflet.latLng(0, 0);
 
-// Map settings
+// Map rendering
 const GAMEPLAY_ZOOM_LEVEL = 19;
 
-// Grid settings
+// Grid geometry
 const TILE_DEGREES = 1e-4;
 
-// Interaction radius (Chebyshev distance in grid cells)
+// Crafting + interaction
 const INTERACTION_RADIUS_CELLS = 3;
-
-// Higher win threshold for D3.b
 const TARGET_TOKEN_VALUE = 32;
 
 //
 // ────────────────────────────────────────────────────────────────────────────────
-//   TYPES & GAME STATE
+//   TYPES & STATE
 // ────────────────────────────────────────────────────────────────────────────────
 //
 
@@ -74,6 +72,9 @@ type GameState = {
   playerCell: GridCell;
 };
 
+//
+// Initial game state
+//
 const initialPlayerCell = latLngToCell(CLASSROOM_LATLNG);
 
 const gameState: GameState = {
@@ -83,7 +84,7 @@ const gameState: GameState = {
   playerCell: initialPlayerCell,
 };
 
-// Active rectangles on the map
+// Active rectangles for visible cells
 const cellRectangles = new Map<string, leaflet.Rectangle>();
 
 //
@@ -104,11 +105,11 @@ function latLngToCell(pos: leaflet.LatLng): GridCell {
 }
 
 function cellToBounds(cell: GridCell): leaflet.LatLngBounds {
-  const lat0 = NULL_ISLAND_LATLNG.lat + cell.i * TILE_DEGREES;
-  const lng0 = NULL_ISLAND_LATLNG.lng + cell.j * TILE_DEGREES;
-  return leaflet.latLngBounds([lat0, lng0], [
-    lat0 + TILE_DEGREES,
-    lng0 + TILE_DEGREES,
+  const lat = NULL_ISLAND_LATLNG.lat + cell.i * TILE_DEGREES;
+  const lng = NULL_ISLAND_LATLNG.lng + cell.j * TILE_DEGREES;
+  return leaflet.latLngBounds([lat, lng], [
+    lat + TILE_DEGREES,
+    lng + TILE_DEGREES,
   ]);
 }
 
@@ -118,25 +119,24 @@ function cellToCenter(cell: GridCell): leaflet.LatLng {
 
 //
 // ────────────────────────────────────────────────────────────────────────────────
-//   TOKEN LOGIC
+//   TOKEN LOGIC (MEMENTO + FLYWEIGHT LOGIC)
 // ────────────────────────────────────────────────────────────────────────────────
 //
 
-// Base token layout (memoryless, deterministic)
+// Base layout (memoryless deterministic world)
 function getBaseTokenValue(i: number, j: number): number | null {
-  const roll = luck(`${i},${j},token`);
-  return roll < 0.3 ? 1 : null;
+  return luck(`${i},${j},token`) < 0.3 ? 1 : null;
 }
 
-// Effective value = override if exists, else base value
+// Persistent override value for modified cells
 function getEffectiveTokenValue(i: number, j: number): number | null {
   const key = cellKey(i, j);
   return gameState.cellOverrides.has(key)
-    ? gameState.cellOverrides.get(key) ?? null
+    ? gameState.cellOverrides.get(key)!
     : getBaseTokenValue(i, j);
 }
 
-// Nearby = Chebyshev distance from player cell
+// Player-range check
 function canInteractWithCell(i: number, j: number): boolean {
   const pi = gameState.playerCell.i;
   const pj = gameState.playerCell.j;
@@ -146,7 +146,7 @@ function canInteractWithCell(i: number, j: number): boolean {
 
 //
 // ────────────────────────────────────────────────────────────────────────────────
-//   UI UPDATE HELPERS
+//   UI HELPERS
 // ────────────────────────────────────────────────────────────────────────────────
 //
 
@@ -156,6 +156,7 @@ function updateStatusPanel(message?: string) {
       `You win! Final token: ${gameState.heldTokenValue}`;
     return;
   }
+
   const held = gameState.heldTokenValue;
   const heldText = held === null ? "Held token: none" : `Held token: ${held}`;
   statusPanel.textContent = message ? `${heldText} | ${message}` : heldText;
@@ -165,10 +166,10 @@ function updateCellDisplay(i: number, j: number) {
   const rect = cellRectangles.get(cellKey(i, j));
   if (!rect) return;
 
-  const value = getEffectiveTokenValue(i, j);
-  if (value === null) rect.unbindTooltip();
+  const val = getEffectiveTokenValue(i, j);
+  if (val === null) rect.unbindTooltip();
   else {
-    rect.bindTooltip(`${value}`, {
+    rect.bindTooltip(`${val}`, {
       permanent: true,
       direction: "center",
       className: "token-label",
@@ -188,7 +189,7 @@ function checkWinCondition() {
 
 //
 // ────────────────────────────────────────────────────────────────────────────────
-//   CELL INTERACTION (PICKUP / PLACE / CRAFT)
+//   CELL INTERACTION (CRAFTING LOGIC)
 // ────────────────────────────────────────────────────────────────────────────────
 //
 
@@ -204,10 +205,7 @@ function handleCellClick(i: number, j: number) {
 
   // Pick up
   if (held === null) {
-    if (cellValue === null) {
-      updateStatusPanel("No token there.");
-      return;
-    }
+    if (cellValue === null) return updateStatusPanel("No token there.");
     gameState.heldTokenValue = cellValue;
     gameState.cellOverrides.set(key, null);
     updateCellDisplay(i, j);
@@ -227,12 +225,10 @@ function handleCellClick(i: number, j: number) {
 
   // Craft
   if (cellValue !== held) {
-    updateStatusPanel("Token values do not match.");
-    return;
+    return updateStatusPanel("Token values do not match.");
   }
 
-  const newVal = held * 2;
-  gameState.heldTokenValue = newVal;
+  gameState.heldTokenValue = held * 2;
   gameState.cellOverrides.set(key, null);
   updateCellDisplay(i, j);
   updateStatusPanel("Crafted!");
@@ -241,7 +237,7 @@ function handleCellClick(i: number, j: number) {
 
 //
 // ────────────────────────────────────────────────────────────────────────────────
-//   MAP & GRID MANAGEMENT
+//   MAP & GRID MANAGEMENT (FLYWEIGHT)
 // ────────────────────────────────────────────────────────────────────────────────
 //
 
@@ -253,30 +249,26 @@ const map = leaflet.map(mapDiv, {
   zoomControl: false,
 });
 
-// Background tiles
-leaflet
-  .tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    attribution: "&copy; OpenStreetMap contributors",
-  })
-  .addTo(map);
+// Background
+leaflet.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19,
+  attribution: "&copy; OpenStreetMap contributors",
+}).addTo(map);
 
 // Player marker
 const playerMarker = leaflet.marker(cellToCenter(initialPlayerCell))
   .bindTooltip("You are here")
   .addTo(map);
 
-// Spawn/despawn cell rectangles based on viewport; logical cell state persists in cellOverrides
+// Spawn/despawn rectangles; logical cell state persists in cellOverrides
 function updateVisibleCells() {
   const bounds = map.getBounds();
 
-  // Remove all existing rectangles from the map
-  for (const rect of cellRectangles.values()) {
-    map.removeLayer(rect);
-  }
+  // Clear all old rectangles
+  for (const rect of cellRectangles.values()) map.removeLayer(rect);
   cellRectangles.clear();
 
-  // Compute rows/cols relative to Null Island (global grid)
+  // Compute visible grid
   const minRow = Math.floor(
     (bounds.getSouth() - NULL_ISLAND_LATLNG.lat) / TILE_DEGREES,
   );
@@ -290,23 +282,21 @@ function updateVisibleCells() {
     (bounds.getEast() - NULL_ISLAND_LATLNG.lng) / TILE_DEGREES,
   );
 
-  // Create fresh rectangles for all visible cells
+  // Create fresh rectangles
   for (let i = minRow; i <= maxRow; i++) {
     for (let j = minCol; j <= maxCol; j++) {
-      const key = cellKey(i, j);
       const rect = leaflet.rectangle(cellToBounds({ i, j }), {
         color: "#3388ff",
         weight: 1,
       });
-
       rect.addTo(map);
+
+      const key = cellKey(i, j);
       cellRectangles.set(key, rect);
 
       updateCellDisplay(i, j);
 
-      rect.on("click", () => {
-        handleCellClick(i, j);
-      });
+      rect.on("click", () => handleCellClick(i, j));
     }
   }
 }
@@ -325,28 +315,28 @@ function updatePlayerPosition() {
 
 function movePlayerBy(di: number, dj: number) {
   if (gameState.hasWon) return;
+
   gameState.playerCell = {
     i: gameState.playerCell.i + di,
     j: gameState.playerCell.j + dj,
   };
+
   updatePlayerPosition();
   updateStatusPanel("Moved.");
 }
 
 function setupMovementButtons() {
-  const dirs = [
+  [
     { label: "North", di: 1, dj: 0 },
     { label: "South", di: -1, dj: 0 },
     { label: "West", di: 0, dj: -1 },
     { label: "East", di: 0, dj: 1 },
-  ];
-
-  for (const d of dirs) {
+  ].forEach(({ label, di, dj }) => {
     const btn = document.createElement("button");
-    btn.textContent = d.label;
-    btn.onclick = () => movePlayerBy(d.di, d.dj);
+    btn.textContent = label;
+    btn.onclick = () => movePlayerBy(di, dj);
     controlPanel.append(btn);
-  }
+  });
 }
 
 //
