@@ -141,3 +141,21 @@ Key gameplay challenge: Let players move their character around the world, farm 
 - [✅] Add simple UI buttons (N / S / E / W) for moving the player by one grid step
 - [✅] Track player position as a `GridCell` plus a derived `LatLng`
 - [✅] As the player moves, keep cells visible to the edge of the map and restrict interaction to nearby cells
+
+## D3.c: Object persistence
+
+Key technical challenge: Use a lightweight global grid plus a persistent store for modified cells so off-screen cells do not require full objects in memory, but remembered changes come back when the map scrolls.
+
+### Next steps
+
+- [✅] Add a `D3.c` section to PLAN.md and commit it
+- [ ] Treat `cellOverrides` as the persistent state map for modified cells (Memento-like)
+- [ ] Stop deleting `cellOverrides` entries when cells leave the viewport
+- [ ] Refactor `updateVisibleCells` to clear and rebuild all visible rectangles from scratch based on:
+  - [ ] Current viewport bounds
+  - [ ] `getEffectiveTokenValue` (using `cellOverrides` + `luck`)
+- [ ] Manually test:
+  - [ ] Modify a cell, scroll it fully off-screen, then scroll back
+  - [ ] Confirm the modified state is restored, not reset
+- [ ] Do a cleanup-only commit for D3.c code changes
+- [ ] Make a commit marking “D3.c complete”
