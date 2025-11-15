@@ -266,43 +266,47 @@ const playerMarker = leaflet.marker(cellToCenter(initialPlayerCell))
   .bindTooltip("You are here")
   .addTo(map);
 
-// Spawn/despawn memoryless cells based on viewport
+// Spawn/despawn cell rectangles based on viewport; logical cell state persists in cellOverrides
 function updateVisibleCells() {
-  const b = map.getBounds();
+  const bounds = map.getBounds();
 
-  const minRow = Math.floor((b.getSouth() - 0) / TILE_DEGREES);
-  const maxRow = Math.ceil((b.getNorth() - 0) / TILE_DEGREES);
-  const minCol = Math.floor((b.getWest() - 0) / TILE_DEGREES);
-  const maxCol = Math.ceil((b.getEast() - 0) / TILE_DEGREES);
+  // Remove all existing rectangles from the map
+  for (const rect of cellRectangles.values()) {
+    map.removeLayer(rect);
+  }
+  cellRectangles.clear();
 
-  const needed = new Set<string>();
+  // Compute rows/cols relative to Null Island (global grid)
+  const minRow = Math.floor(
+    (bounds.getSouth() - NULL_ISLAND_LATLNG.lat) / TILE_DEGREES,
+  );
+  const maxRow = Math.ceil(
+    (bounds.getNorth() - NULL_ISLAND_LATLNG.lat) / TILE_DEGREES,
+  );
+  const minCol = Math.floor(
+    (bounds.getWest() - NULL_ISLAND_LATLNG.lng) / TILE_DEGREES,
+  );
+  const maxCol = Math.ceil(
+    (bounds.getEast() - NULL_ISLAND_LATLNG.lng) / TILE_DEGREES,
+  );
 
-  // Add missing cells
+  // Create fresh rectangles for all visible cells
   for (let i = minRow; i <= maxRow; i++) {
     for (let j = minCol; j <= maxCol; j++) {
       const key = cellKey(i, j);
-      needed.add(key);
+      const rect = leaflet.rectangle(cellToBounds({ i, j }), {
+        color: "#3388ff",
+        weight: 1,
+      });
 
-      if (!cellRectangles.has(key)) {
-        const rect = leaflet.rectangle(cellToBounds({ i, j }), {
-          color: "#3388ff",
-          weight: 1,
-        })
-          .addTo(map)
-          .on("click", () => handleCellClick(i, j));
+      rect.addTo(map);
+      cellRectangles.set(key, rect);
 
-        cellRectangles.set(key, rect);
-        updateCellDisplay(i, j);
-      }
-    }
-  }
+      updateCellDisplay(i, j);
 
-  // Remove offscreen cells (memoryless behavior)
-  for (const [key, rect] of cellRectangles.entries()) {
-    if (!needed.has(key)) {
-      map.removeLayer(rect);
-      cellRectangles.delete(key);
-      gameState.cellOverrides.delete(key); // forget its state
+      rect.on("click", () => {
+        handleCellClick(i, j);
+      });
     }
   }
 }

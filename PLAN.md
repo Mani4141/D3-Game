@@ -149,13 +149,13 @@ Key technical challenge: Use a lightweight global grid plus a persistent store f
 ### Next steps
 
 - [✅] Add a `D3.c` section to PLAN.md and commit it
-- [ ] Treat `cellOverrides` as the persistent state map for modified cells (Memento-like)
-- [ ] Stop deleting `cellOverrides` entries when cells leave the viewport
-- [ ] Refactor `updateVisibleCells` to clear and rebuild all visible rectangles from scratch based on:
-  - [ ] Current viewport bounds
-  - [ ] `getEffectiveTokenValue` (using `cellOverrides` + `luck`)
-- [ ] Manually test:
-  - [ ] Modify a cell, scroll it fully off-screen, then scroll back
-  - [ ] Confirm the modified state is restored, not reset
-- [ ] Do a cleanup-only commit for D3.c code changes
-- [ ] Make a commit marking “D3.c complete”
+- [✅] Treat `cellOverrides` as the persistent state map for modified cells (Memento-like)
+- [✅] Stop deleting `cellOverrides` entries when cells leave the viewport
+- [✅] Refactor `updateVisibleCells` to clear and rebuild all visible rectangles from scratch based on:
+  - [✅] Current viewport bounds
+  - [✅] `getEffectiveTokenValue` (using `cellOverrides` + `luck`)
+- [✅] Manually test:
+  - [✅] Modify a cell, scroll it fully off-screen, then scroll back
+  - [✅] Confirm the modified state is restored, not reset
+- [] Do a cleanup-only commit for D3.c code changes
+- [] Make a commit marking “D3.c complete”
