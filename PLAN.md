@@ -174,13 +174,13 @@ Key technical challenge: Swap button-based movement for a geolocation-driven mov
 
 #### Movement controllers
 
-- [ ] Implement a `ButtonMovementController` that:
-  - [ ] Wires up the existing N/S/E/W buttons in `start()`
-  - [ ] Removes or disables handlers in `stop()`
-- [ ] Implement a `GeolocationMovementController` that:
-  - [ ] Uses `navigator.geolocation.watchPosition` to update `playerCell` from device location
-  - [ ] Cleans up the watch in `stop()`
-- [ ] Add a simple UI control to switch between “Buttons” and “Geolocation” at runtime
+- [✅] Implement a `ButtonMovementController` that:
+  - [✅] Wires up the existing N/S/E/W buttons in `start()`
+  - [✅] Removes or disables handlers in `stop()`
+- [✅] Implement a `GeolocationMovementController` that:
+  - [✅] Uses `navigator.geolocation.watchPosition` to update `playerCell` from device location
+  - [✅] Cleans up the watch in `stop()`
+- [✅] Add a simple UI control to switch between “Buttons” and “Geolocation” at runtime
 
 #### Persistence with localStorage
 

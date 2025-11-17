@@ -22,10 +22,15 @@ const mapDiv = document.createElement("div");
 mapDiv.id = "map";
 document.body.append(mapDiv);
 
-// Movement controls container (used by button movement controller)
+// Movement controls container (for directional buttons)
 const controlPanel = document.createElement("div");
 controlPanel.id = "controlPanel";
 document.body.append(controlPanel);
+
+// Movement mode toggle container (buttons vs geolocation)
+const movementModePanel = document.createElement("div");
+movementModePanel.id = "movementModePanel";
+document.body.append(movementModePanel);
 
 // Status panel (held token + messages)
 const statusPanel = document.createElement("div");
@@ -79,6 +84,8 @@ interface MovementController {
   getName(): string;
 }
 
+type MovementMode = "buttons" | "geolocation";
+
 //
 // Initial game state
 //
@@ -94,8 +101,9 @@ const gameState: GameState = {
 // Active rectangles for visible cells
 const cellRectangles = new Map<string, leaflet.Rectangle>();
 
-// Active movement controller (buttons for now, geolocation later)
+// Active movement controller (buttons or geolocation)
 let activeMovement: MovementController | null = null;
+let currentMovementMode: MovementMode = "buttons";
 
 //
 // ────────────────────────────────────────────────────────────────────────────────
@@ -338,7 +346,7 @@ function movePlayerBy(di: number, dj: number) {
   updateStatusPanel("Moved.");
 }
 
-// Button-based movement controller (one concrete MovementController)
+// Button-based movement controller
 class ButtonMovementController implements MovementController {
   private buttons: HTMLButtonElement[] = [];
 
@@ -372,6 +380,93 @@ class ButtonMovementController implements MovementController {
   }
 }
 
+// Geolocation-based movement controller
+class GeolocationMovementController implements MovementController {
+  private watchId: number | null = null;
+
+  start(): void {
+    if (!("geolocation" in navigator)) {
+      updateStatusPanel("Geolocation not supported in this browser.");
+      return;
+    }
+
+    updateStatusPanel("Geolocation: waiting for position...");
+
+    this.watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const latlng = leaflet.latLng(
+          pos.coords.latitude,
+          pos.coords.longitude,
+        );
+        const newCell = latLngToCell(latlng);
+        setPlayerCell(newCell);
+        updateStatusPanel("Geolocation: position updated.");
+      },
+      (err) => {
+        console.error(err);
+        updateStatusPanel(`Geolocation error: ${err.message}`);
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 5000,
+        timeout: 10000,
+      },
+    );
+  }
+
+  stop(): void {
+    if (this.watchId !== null && "geolocation" in navigator) {
+      navigator.geolocation.clearWatch(this.watchId);
+    }
+    this.watchId = null;
+  }
+
+  getName(): string {
+    return "Geolocation";
+  }
+}
+
+//
+// ────────────────────────────────────────────────────────────────────────────────
+//   MOVEMENT MODE SWITCHER
+// ────────────────────────────────────────────────────────────────────────────────
+//
+
+function switchMovement(mode: MovementMode) {
+  if (mode === currentMovementMode && activeMovement) return;
+
+  if (activeMovement) {
+    activeMovement.stop();
+  }
+
+  currentMovementMode = mode;
+
+  if (mode === "geolocation") {
+    activeMovement = new GeolocationMovementController();
+  } else {
+    activeMovement = new ButtonMovementController();
+  }
+
+  activeMovement.start();
+  updateStatusPanel(`Movement: ${activeMovement.getName()}`);
+}
+
+function setupMovementModeSwitcher() {
+  const label = document.createElement("span");
+  label.textContent = "Movement mode: ";
+  movementModePanel.append(label);
+
+  const buttonsModeButton = document.createElement("button");
+  buttonsModeButton.textContent = "Buttons";
+  buttonsModeButton.onclick = () => switchMovement("buttons");
+  movementModePanel.append(buttonsModeButton);
+
+  const geoModeButton = document.createElement("button");
+  geoModeButton.textContent = "Geolocation";
+  geoModeButton.onclick = () => switchMovement("geolocation");
+  movementModePanel.append(geoModeButton);
+}
+
 //
 // ────────────────────────────────────────────────────────────────────────────────
 //   INIT
@@ -379,9 +474,8 @@ class ButtonMovementController implements MovementController {
 //
 
 map.whenReady(() => {
-  // For now, default to button-based movement.
-  activeMovement = new ButtonMovementController();
-  activeMovement.start();
+  setupMovementModeSwitcher();
+  switchMovement("buttons"); // default mode
 
   updateVisibleCells();
   updateStatusPanel();
