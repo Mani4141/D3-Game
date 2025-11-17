@@ -197,8 +197,8 @@ Key technical challenge: Swap button-based movement for a geolocation-driven mov
   - [✅] Clears localStorage
   - [✅] Resets `gameState` to its initial values
   - [✅] Recenters the map and rebuilds the grid
-- [] Ensure:
-  - [] Geolocation-based movement works on a real device
-  - [] Switching between movement modes works
-  - [] Closing/reopening the page restores the same game state
-- [] Do a cleanup-only commit for D3.d changes and a final `D3.d complete` commit
+- [✅] Ensure:
+  - [✅] Geolocation-based movement works on a real device
+  - [✅] Switching between movement modes works
+  - [✅] Closing/reopening the page restores the same game state
+- [✅] Do a cleanup-only commit for D3.d changes and a final `D3.d complete` commit

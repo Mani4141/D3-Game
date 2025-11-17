@@ -22,12 +22,12 @@ const mapDiv = document.createElement("div");
 mapDiv.id = "map";
 document.body.append(mapDiv);
 
-// Movement controls container (for directional buttons)
+// Directional movement controls (for button mode)
 const controlPanel = document.createElement("div");
 controlPanel.id = "controlPanel";
 document.body.append(controlPanel);
 
-// Movement mode toggle container (buttons vs geolocation)
+// Movement mode + new game controls
 const movementModePanel = document.createElement("div");
 movementModePanel.id = "movementModePanel";
 document.body.append(movementModePanel);
@@ -97,9 +97,6 @@ type PersistentState = {
   movementMode: MovementMode;
 };
 
-//
-// Initial game state
-//
 const initialPlayerCell = latLngToCell(CLASSROOM_LATLNG);
 
 const gameState: GameState = {
@@ -109,10 +106,10 @@ const gameState: GameState = {
   playerCell: initialPlayerCell,
 };
 
-// Active rectangles for visible cells
+// Visible cell rectangles only (flyweight)
 const cellRectangles = new Map<string, leaflet.Rectangle>();
 
-// Active movement controller (buttons or geolocation)
+// Active movement controller and mode
 let activeMovement: MovementController | null = null;
 let currentMovementMode: MovementMode = "buttons";
 
@@ -148,16 +145,16 @@ function cellToCenter(cell: GridCell): leaflet.LatLng {
 
 //
 // ────────────────────────────────────────────────────────────────────────────────
-//   TOKEN LOGIC (MEMENTO + FLYWEIGHT LOGIC)
+//   TOKEN LOGIC (MEMENTO + FLYWEIGHT)
 // ────────────────────────────────────────────────────────────────────────────────
 //
 
-// Base layout (memoryless deterministic world)
+// Base layout: deterministic, memoryless world
 function getBaseTokenValue(i: number, j: number): number | null {
   return luck(`${i},${j},token`) < 0.3 ? 1 : null;
 }
 
-// Persistent override value for modified cells
+// Effective value = override if set, else base value
 function getEffectiveTokenValue(i: number, j: number): number | null {
   const key = cellKey(i, j);
   return gameState.cellOverrides.has(key)
@@ -165,7 +162,7 @@ function getEffectiveTokenValue(i: number, j: number): number | null {
     : getBaseTokenValue(i, j);
 }
 
-// Player-range check
+// Nearby = Chebyshev distance in grid space from player cell
 function canInteractWithCell(i: number, j: number): boolean {
   const pi = gameState.playerCell.i;
   const pj = gameState.playerCell.j;
@@ -196,8 +193,9 @@ function updateCellDisplay(i: number, j: number) {
   if (!rect) return;
 
   const val = getEffectiveTokenValue(i, j);
-  if (val === null) rect.unbindTooltip();
-  else {
+  if (val === null) {
+    rect.unbindTooltip();
+  } else {
     rect.bindTooltip(`${val}`, {
       permanent: true,
       direction: "center",
@@ -243,7 +241,6 @@ function loadStateFromLocalStorage() {
     if (!raw) return;
 
     const parsed = JSON.parse(raw) as Partial<PersistentState>;
-
     if (!parsed || !parsed.playerCell) return;
 
     gameState.heldTokenValue = typeof parsed.heldTokenValue === "number" ||
@@ -252,7 +249,6 @@ function loadStateFromLocalStorage() {
       : null;
 
     gameState.hasWon = !!parsed.hasWon;
-
     gameState.playerCell = parsed.playerCell;
 
     gameState.cellOverrides.clear();
@@ -278,7 +274,7 @@ function clearStateFromLocalStorage() {
 
 //
 // ────────────────────────────────────────────────────────────────────────────────
-//   CELL INTERACTION (CRAFTING LOGIC)
+//   CELL INTERACTION (PICKUP / PLACE / CRAFT)
 // ────────────────────────────────────────────────────────────────────────────────
 //
 
@@ -294,7 +290,10 @@ function handleCellClick(i: number, j: number) {
 
   // Pick up
   if (held === null) {
-    if (cellValue === null) return updateStatusPanel("No token there.");
+    if (cellValue === null) {
+      updateStatusPanel("No token there.");
+      return;
+    }
     gameState.heldTokenValue = cellValue;
     gameState.cellOverrides.set(key, null);
     updateCellDisplay(i, j);
@@ -316,7 +315,8 @@ function handleCellClick(i: number, j: number) {
 
   // Craft
   if (cellValue !== held) {
-    return updateStatusPanel("Token values do not match.");
+    updateStatusPanel("Token values do not match.");
+    return;
   }
 
   gameState.heldTokenValue = held * 2;
@@ -341,26 +341,22 @@ const map = leaflet.map(mapDiv, {
   zoomControl: false,
 });
 
-// Background
 leaflet.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
   attribution: "&copy; OpenStreetMap contributors",
 }).addTo(map);
 
-// Player marker
 const playerMarker = leaflet.marker(cellToCenter(initialPlayerCell))
   .bindTooltip("You are here")
   .addTo(map);
 
-// Spawn/despawn rectangles; logical cell state persists in cellOverrides
+// Rebuild rectangles from scratch based on viewport and current state
 function updateVisibleCells() {
   const bounds = map.getBounds();
 
-  // Clear all old rectangles
   for (const rect of cellRectangles.values()) map.removeLayer(rect);
   cellRectangles.clear();
 
-  // Compute visible grid
   const minRow = Math.floor(
     (bounds.getSouth() - NULL_ISLAND_LATLNG.lat) / TILE_DEGREES,
   );
@@ -374,7 +370,6 @@ function updateVisibleCells() {
     (bounds.getEast() - NULL_ISLAND_LATLNG.lng) / TILE_DEGREES,
   );
 
-  // Create fresh rectangles
   for (let i = minRow; i <= maxRow; i++) {
     for (let j = minCol; j <= maxCol; j++) {
       const rect = leaflet.rectangle(cellToBounds({ i, j }), {
@@ -387,7 +382,6 @@ function updateVisibleCells() {
       cellRectangles.set(key, rect);
 
       updateCellDisplay(i, j);
-
       rect.on("click", () => handleCellClick(i, j));
     }
   }
@@ -399,7 +393,6 @@ function updateVisibleCells() {
 // ────────────────────────────────────────────────────────────────────────────────
 //
 
-// Central helper for changing player position
 function setPlayerCell(newCell: GridCell) {
   gameState.playerCell = newCell;
   updatePlayerPosition();
@@ -515,12 +508,9 @@ function switchMovement(mode: MovementMode) {
   }
 
   currentMovementMode = mode;
-
-  if (mode === "geolocation") {
-    activeMovement = new GeolocationMovementController();
-  } else {
-    activeMovement = new ButtonMovementController();
-  }
+  activeMovement = mode === "geolocation"
+    ? new GeolocationMovementController()
+    : new ButtonMovementController();
 
   activeMovement.start();
   updateStatusPanel(`Movement: ${activeMovement.getName()}`);
@@ -542,7 +532,6 @@ function setupMovementModeSwitcher() {
   geoModeButton.onclick = () => switchMovement("geolocation");
   movementModePanel.append(geoModeButton);
 
-  // New Game button
   const newGameButton = document.createElement("button");
   newGameButton.textContent = "New Game";
   newGameButton.onclick = () => resetGame();
@@ -557,8 +546,8 @@ function resetGame() {
   gameState.cellOverrides.clear();
   gameState.playerCell = initialPlayerCell;
 
-  // Reset movement mode to buttons
   currentMovementMode = "buttons";
+
   if (activeMovement) {
     activeMovement.stop();
   }
@@ -578,14 +567,11 @@ function resetGame() {
 //
 
 map.whenReady(() => {
-  // Load any previously saved state before wiring UI
   loadStateFromLocalStorage();
 
-  // Reflect loaded player position
   updatePlayerPosition();
-
   setupMovementModeSwitcher();
-  switchMovement(currentMovementMode); // will be "buttons" or loaded from state
+  switchMovement(currentMovementMode);
 
   updateVisibleCells();
   updateStatusPanel();
