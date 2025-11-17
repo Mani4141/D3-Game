@@ -184,21 +184,21 @@ Key technical challenge: Swap button-based movement for a geolocation-driven mov
 
 #### Persistence with localStorage
 
-- [ ] Define a serializable `PersistentState` type (no Maps, only plain objects/arrays)
-- [ ] Implement `saveStateToLocalStorage()` that writes:
-  - [ ] `heldTokenValue`, `hasWon`, `playerCell`, and `cellOverrides` (as `[key, value]` pairs)
-- [ ] Implement `loadStateFromLocalStorage()` that:
-  - [ ] Restores `gameState` if valid data exists
-  - [ ] Calls `updatePlayerPosition`, `updateVisibleCells`, and `updateStatusPanel` after loading
+- [✅] Define a serializable `PersistentState` type (no Maps, only plain objects/arrays)
+- [✅] Implement `saveStateToLocalStorage()` that writes:
+  - [✅] `heldTokenValue`, `hasWon`, `playerCell`, and `cellOverrides` (as `[key, value]` pairs)
+- [✅] Implement `loadStateFromLocalStorage()` that:
+  - [✅] Restores `gameState` if valid data exists
+  - [✅] Calls `updatePlayerPosition`, `updateVisibleCells`, and `updateStatusPanel` after loading
 
 #### New game + polish
 
-- [ ] Add a “New Game” button that:
-  - [ ] Clears localStorage
-  - [ ] Resets `gameState` to its initial values
-  - [ ] Recenters the map and rebuilds the grid
-- [ ] Ensure:
-  - [ ] Geolocation-based movement works on a real device
-  - [ ] Switching between movement modes works
-  - [ ] Closing/reopening the page restores the same game state
-- [ ] Do a cleanup-only commit for D3.d changes and a final `D3.d complete` commit
+- [✅] Add a “New Game” button that:
+  - [✅] Clears localStorage
+  - [✅] Resets `gameState` to its initial values
+  - [✅] Recenters the map and rebuilds the grid
+- [] Ensure:
+  - [] Geolocation-based movement works on a real device
+  - [] Switching between movement modes works
+  - [] Closing/reopening the page restores the same game state
+- [] Do a cleanup-only commit for D3.d changes and a final `D3.d complete` commit

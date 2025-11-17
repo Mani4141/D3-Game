@@ -62,6 +62,9 @@ const TILE_DEGREES = 1e-4;
 const INTERACTION_RADIUS_CELLS = 3;
 const TARGET_TOKEN_VALUE = 32;
 
+// Persistence
+const LOCAL_STORAGE_KEY = "world-of-bits-state";
+
 //
 // ────────────────────────────────────────────────────────────────────────────────
 //   TYPES & STATE
@@ -77,7 +80,6 @@ type GameState = {
   playerCell: GridCell;
 };
 
-// Facade for movement – game code does not care how the player moves
 interface MovementController {
   start(): void;
   stop(): void;
@@ -85,6 +87,15 @@ interface MovementController {
 }
 
 type MovementMode = "buttons" | "geolocation";
+
+// Serializable version of game state for localStorage
+type PersistentState = {
+  heldTokenValue: number | null;
+  hasWon: boolean;
+  playerCell: GridCell;
+  cellOverrides: [string, number | null][];
+  movementMode: MovementMode;
+};
 
 //
 // Initial game state
@@ -207,6 +218,66 @@ function checkWinCondition() {
 
 //
 // ────────────────────────────────────────────────────────────────────────────────
+//   PERSISTENCE (localStorage)
+// ────────────────────────────────────────────────────────────────────────────────
+//
+
+function saveStateToLocalStorage() {
+  try {
+    const state: PersistentState = {
+      heldTokenValue: gameState.heldTokenValue,
+      hasWon: gameState.hasWon,
+      playerCell: gameState.playerCell,
+      cellOverrides: Array.from(gameState.cellOverrides.entries()),
+      movementMode: currentMovementMode,
+    };
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
+  } catch (err) {
+    console.error("Failed to save state:", err);
+  }
+}
+
+function loadStateFromLocalStorage() {
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (!raw) return;
+
+    const parsed = JSON.parse(raw) as Partial<PersistentState>;
+
+    if (!parsed || !parsed.playerCell) return;
+
+    gameState.heldTokenValue = typeof parsed.heldTokenValue === "number" ||
+        parsed.heldTokenValue === null
+      ? parsed.heldTokenValue
+      : null;
+
+    gameState.hasWon = !!parsed.hasWon;
+
+    gameState.playerCell = parsed.playerCell;
+
+    gameState.cellOverrides.clear();
+    if (Array.isArray(parsed.cellOverrides)) {
+      for (const [key, value] of parsed.cellOverrides) {
+        gameState.cellOverrides.set(key, value);
+      }
+    }
+
+    currentMovementMode = parsed.movementMode ?? "buttons";
+  } catch (err) {
+    console.error("Failed to load state:", err);
+  }
+}
+
+function clearStateFromLocalStorage() {
+  try {
+    localStorage.removeItem(LOCAL_STORAGE_KEY);
+  } catch (err) {
+    console.error("Failed to clear state:", err);
+  }
+}
+
+//
+// ────────────────────────────────────────────────────────────────────────────────
 //   CELL INTERACTION (CRAFTING LOGIC)
 // ────────────────────────────────────────────────────────────────────────────────
 //
@@ -229,6 +300,7 @@ function handleCellClick(i: number, j: number) {
     updateCellDisplay(i, j);
     updateStatusPanel("Picked up a token.");
     checkWinCondition();
+    saveStateToLocalStorage();
     return;
   }
 
@@ -238,6 +310,7 @@ function handleCellClick(i: number, j: number) {
     gameState.heldTokenValue = null;
     updateCellDisplay(i, j);
     updateStatusPanel("Placed token.");
+    saveStateToLocalStorage();
     return;
   }
 
@@ -251,6 +324,7 @@ function handleCellClick(i: number, j: number) {
   updateCellDisplay(i, j);
   updateStatusPanel("Crafted!");
   checkWinCondition();
+  saveStateToLocalStorage();
 }
 
 //
@@ -329,6 +403,7 @@ function updateVisibleCells() {
 function setPlayerCell(newCell: GridCell) {
   gameState.playerCell = newCell;
   updatePlayerPosition();
+  saveStateToLocalStorage();
 }
 
 function updatePlayerPosition() {
@@ -428,7 +503,7 @@ class GeolocationMovementController implements MovementController {
 
 //
 // ────────────────────────────────────────────────────────────────────────────────
-//   MOVEMENT MODE SWITCHER
+//   MOVEMENT MODE SWITCHER + NEW GAME
 // ────────────────────────────────────────────────────────────────────────────────
 //
 
@@ -449,6 +524,7 @@ function switchMovement(mode: MovementMode) {
 
   activeMovement.start();
   updateStatusPanel(`Movement: ${activeMovement.getName()}`);
+  saveStateToLocalStorage();
 }
 
 function setupMovementModeSwitcher() {
@@ -465,6 +541,34 @@ function setupMovementModeSwitcher() {
   geoModeButton.textContent = "Geolocation";
   geoModeButton.onclick = () => switchMovement("geolocation");
   movementModePanel.append(geoModeButton);
+
+  // New Game button
+  const newGameButton = document.createElement("button");
+  newGameButton.textContent = "New Game";
+  newGameButton.onclick = () => resetGame();
+  movementModePanel.append(newGameButton);
+}
+
+function resetGame() {
+  clearStateFromLocalStorage();
+
+  gameState.heldTokenValue = null;
+  gameState.hasWon = false;
+  gameState.cellOverrides.clear();
+  gameState.playerCell = initialPlayerCell;
+
+  // Reset movement mode to buttons
+  currentMovementMode = "buttons";
+  if (activeMovement) {
+    activeMovement.stop();
+  }
+  activeMovement = new ButtonMovementController();
+  activeMovement.start();
+
+  updatePlayerPosition();
+  updateVisibleCells();
+  updateStatusPanel("New game started.");
+  saveStateToLocalStorage();
 }
 
 //
@@ -474,8 +578,14 @@ function setupMovementModeSwitcher() {
 //
 
 map.whenReady(() => {
+  // Load any previously saved state before wiring UI
+  loadStateFromLocalStorage();
+
+  // Reflect loaded player position
+  updatePlayerPosition();
+
   setupMovementModeSwitcher();
-  switchMovement("buttons"); // default mode
+  switchMovement(currentMovementMode); // will be "buttons" or loaded from state
 
   updateVisibleCells();
   updateStatusPanel();
