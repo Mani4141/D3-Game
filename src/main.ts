@@ -22,7 +22,7 @@ const mapDiv = document.createElement("div");
 mapDiv.id = "map";
 document.body.append(mapDiv);
 
-// Movement buttons
+// Movement controls container (used by button movement controller)
 const controlPanel = document.createElement("div");
 controlPanel.id = "controlPanel";
 document.body.append(controlPanel);
@@ -72,6 +72,13 @@ type GameState = {
   playerCell: GridCell;
 };
 
+// Facade for movement – game code does not care how the player moves
+interface MovementController {
+  start(): void;
+  stop(): void;
+  getName(): string;
+}
+
 //
 // Initial game state
 //
@@ -86,6 +93,9 @@ const gameState: GameState = {
 
 // Active rectangles for visible cells
 const cellRectangles = new Map<string, leaflet.Rectangle>();
+
+// Active movement controller (buttons for now, geolocation later)
+let activeMovement: MovementController | null = null;
 
 //
 // ────────────────────────────────────────────────────────────────────────────────
@@ -303,9 +313,15 @@ function updateVisibleCells() {
 
 //
 // ────────────────────────────────────────────────────────────────────────────────
-//   PLAYER MOVEMENT
+//   PLAYER MOVEMENT (FACADE ENTRY POINT)
 // ────────────────────────────────────────────────────────────────────────────────
 //
+
+// Central helper for changing player position
+function setPlayerCell(newCell: GridCell) {
+  gameState.playerCell = newCell;
+  updatePlayerPosition();
+}
 
 function updatePlayerPosition() {
   const pos = cellToCenter(gameState.playerCell);
@@ -316,27 +332,44 @@ function updatePlayerPosition() {
 function movePlayerBy(di: number, dj: number) {
   if (gameState.hasWon) return;
 
-  gameState.playerCell = {
-    i: gameState.playerCell.i + di,
-    j: gameState.playerCell.j + dj,
-  };
-
-  updatePlayerPosition();
+  const current = gameState.playerCell;
+  const next: GridCell = { i: current.i + di, j: current.j + dj };
+  setPlayerCell(next);
   updateStatusPanel("Moved.");
 }
 
-function setupMovementButtons() {
-  [
-    { label: "North", di: 1, dj: 0 },
-    { label: "South", di: -1, dj: 0 },
-    { label: "West", di: 0, dj: -1 },
-    { label: "East", di: 0, dj: 1 },
-  ].forEach(({ label, di, dj }) => {
-    const btn = document.createElement("button");
-    btn.textContent = label;
-    btn.onclick = () => movePlayerBy(di, dj);
-    controlPanel.append(btn);
-  });
+// Button-based movement controller (one concrete MovementController)
+class ButtonMovementController implements MovementController {
+  private buttons: HTMLButtonElement[] = [];
+
+  start(): void {
+    const configs = [
+      { label: "North", di: 1, dj: 0 },
+      { label: "South", di: -1, dj: 0 },
+      { label: "West", di: 0, dj: -1 },
+      { label: "East", di: 0, dj: 1 },
+    ];
+
+    configs.forEach(({ label, di, dj }) => {
+      const btn = document.createElement("button");
+      btn.textContent = label;
+      btn.onclick = () => movePlayerBy(di, dj);
+      controlPanel.append(btn);
+      this.buttons.push(btn);
+    });
+  }
+
+  stop(): void {
+    this.buttons.forEach((btn) => {
+      btn.onclick = null;
+      btn.remove();
+    });
+    this.buttons = [];
+  }
+
+  getName(): string {
+    return "Buttons";
+  }
 }
 
 //
@@ -346,7 +379,10 @@ function setupMovementButtons() {
 //
 
 map.whenReady(() => {
-  setupMovementButtons();
+  // For now, default to button-based movement.
+  activeMovement = new ButtonMovementController();
+  activeMovement.start();
+
   updateVisibleCells();
   updateStatusPanel();
 });

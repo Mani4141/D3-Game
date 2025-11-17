@@ -159,3 +159,46 @@ Key technical challenge: Use a lightweight global grid plus a persistent store f
   - [✅] Confirm the modified state is restored, not reset
 - [✅] Do a cleanup-only commit for D3.c code changes
 - [✅] Make a commit marking “D3.c complete”
+
+## D3.d: Gameplay Across Real-world Space and Time
+
+Key technical challenge: Swap button-based movement for a geolocation-driven movement system hidden behind a Facade, and persist game state across page loads with localStorage.
+
+### Step
+
+#### Planning and interfaces
+
+- [✅] Add this D3.d section to PLAN.md and commit it
+- [✅] Introduce a `MovementController` interface (Facade) so most game code does not care whether movement comes from buttons or geolocation
+- [✅] Add a helper like `setPlayerCell(newCell: GridCell)` to centralize updating player position and marker
+
+#### Movement controllers
+
+- [ ] Implement a `ButtonMovementController` that:
+  - [ ] Wires up the existing N/S/E/W buttons in `start()`
+  - [ ] Removes or disables handlers in `stop()`
+- [ ] Implement a `GeolocationMovementController` that:
+  - [ ] Uses `navigator.geolocation.watchPosition` to update `playerCell` from device location
+  - [ ] Cleans up the watch in `stop()`
+- [ ] Add a simple UI control to switch between “Buttons” and “Geolocation” at runtime
+
+#### Persistence with localStorage
+
+- [ ] Define a serializable `PersistentState` type (no Maps, only plain objects/arrays)
+- [ ] Implement `saveStateToLocalStorage()` that writes:
+  - [ ] `heldTokenValue`, `hasWon`, `playerCell`, and `cellOverrides` (as `[key, value]` pairs)
+- [ ] Implement `loadStateFromLocalStorage()` that:
+  - [ ] Restores `gameState` if valid data exists
+  - [ ] Calls `updatePlayerPosition`, `updateVisibleCells`, and `updateStatusPanel` after loading
+
+#### New game + polish
+
+- [ ] Add a “New Game” button that:
+  - [ ] Clears localStorage
+  - [ ] Resets `gameState` to its initial values
+  - [ ] Recenters the map and rebuilds the grid
+- [ ] Ensure:
+  - [ ] Geolocation-based movement works on a real device
+  - [ ] Switching between movement modes works
+  - [ ] Closing/reopening the page restores the same game state
+- [ ] Do a cleanup-only commit for D3.d changes and a final `D3.d complete` commit
