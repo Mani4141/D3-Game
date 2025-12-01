@@ -49,3 +49,17 @@ body {
   border-radius: 4px;
   padding: 1px 3px;
 }
+/* Cells you CAN interact with */
+.leaflet-interactive.in-range {
+  stroke: #00ff00 !important; /* bright green border */
+  stroke-width: 3px !important;
+  fill: rgba(0, 255, 0, 0.15) !important; /* green tint */
+}
+
+/* Cells OUTSIDE interaction range */
+.leaflet-interactive.out-of-range {
+  stroke: #999 !important;
+  stroke-dasharray: 4 2 !important; /* dotted outline */
+  fill: rgba(150, 150, 150, 0.05) !important;
+  opacity: 0.7;
+}

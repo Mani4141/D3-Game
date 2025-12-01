@@ -377,7 +377,9 @@ function updateVisibleCells() {
         weight: 1,
       });
       rect.addTo(map);
-
+      const inRange = canInteractWithCell(i, j);
+      rect.getElement()?.classList.toggle("in-range", inRange);
+      rect.getElement()?.classList.toggle("out-of-range", !inRange);
       const key = cellKey(i, j);
       cellRectangles.set(key, rect);
 
